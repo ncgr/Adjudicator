@@ -6,15 +6,17 @@ import os
 
 import click
 
+from tools.waointersect import WAOIntersect
 
-def _validate_tsv_row(row: list[str], line_num: int) -> tuple[str, str, str]:
+
+def _validate_sample_row(row: list[str], line_num: int) -> tuple[str, str, str]:
     if len(row) != 3:
         raise click.BadParameter(
             f"Line {line_num}: expected 3 columns, got {len(row)}.",
             param_hint="--input-tsv",
         )
 
-    label, gff3_path, gfa_path = row[0].strip(), row[1].strip(), row[2].strip()
+    label, gff3_path, gfa_path = row[0].strip(), row[1].strip, row[2].strip
 
     if not label:
         raise click.BadParameter(
@@ -59,7 +61,7 @@ def _parse_tsv(input_tsv: str) -> list[tuple[str, str, str]]:
         for line_num, raw_row in enumerate(reader, start=1):
             if not raw_row or raw_row[0].startswith("#"):
                 continue
-            rows.append(_validate_tsv_row(raw_row, line_num))
+            rows.append(_validate_sample_row(raw_row, line_num))
 
     if not rows:
         raise click.ClickException(f"No data rows found in '{input_tsv}'.")
@@ -136,9 +138,8 @@ def collapse(input_tsv: str, output_dir: str, strict: bool, verbose: bool):
       sample_B  /data/sample_B.gff3  /data/sample_B.gfa
 
     \b
-    Example usage:
-      adjudicator collapse --input-tsv samples.tsv
-      adjudicator collapse -i samples.tsv -o results/ --strict --verbose
+    Usage:
+      adjudicator collapse --input-tsv samples.tsv [options] [--help]
     """
     rows = _parse_tsv(input_tsv)
     click.echo(
@@ -150,9 +151,9 @@ def collapse(input_tsv: str, output_dir: str, strict: bool, verbose: bool):
 
     for label, gff3_path, gfa_path in rows:
         if verbose:
-            click.echo(f"  Processing '{label}':")
-            click.echo(f"    GFF3 : {gff3_path}")
-            click.echo(f"    GFA  : {gfa_path}")
+            click.echo(f"Processing '{label}':")
+            click.echo(f"GFF3 : {gff3_path}")
+            click.echo(f"GFA  : {gfa_path}")
 
     click.echo(f"Done. Results written to '{output_dir}'.")
 
