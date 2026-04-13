@@ -28,6 +28,7 @@ class WAOIntersect:
         """
         self.gff3_a = os.path.abspath(gff3_a)
         self.gff3_b = os.path.abspath(gff3_b)
+        self.features = ["gene"]  # change this later as paramter
         self.trees_b: dict[str, intervaltree.IntervalTree] = {}
         self.records_a: list[tuple[str, int, int, list[str]]] = []
         self._load_b()
@@ -58,6 +59,8 @@ class WAOIntersect:
                     continue
                 fields = line.rstrip("\n").split("\t")
                 if len(fields) < 9:
+                    continue
+                if fields[2].lower() not in self.features:
                     continue
                 seqname = fields[0]
                 start_0 = int(fields[3]) - 1
@@ -137,5 +140,5 @@ class WAOIntersect:
 if __name__ == "__main__":
     test_a = "./test_a.gff3"
     test_b = "./test_b.gff3"
-    wao = WAOIntersect(test_a, test_b)
+    wao = WAOIntersect(test_a, test_b, "gene")
     wao.write("./test.wao.gff3")

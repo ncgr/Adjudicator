@@ -7,6 +7,7 @@ import os
 import click
 
 from tools.waointersect import WAOIntersect
+from tools.adjudicate_model import AdjudicateModel
 
 
 def _validate_sample_row(row: list[str], line_num: int) -> tuple[str, str, str]:
@@ -16,7 +17,7 @@ def _validate_sample_row(row: list[str], line_num: int) -> tuple[str, str, str]:
             param_hint="--input-tsv",
         )
 
-    label, gff3_path, gfa_path = row[0].strip(), row[1].strip, row[2].strip
+    label, gff3_path, gfa_path = row[0].strip(), row[1].strip(), row[2].strip()
 
     if not label:
         raise click.BadParameter(
@@ -54,14 +55,17 @@ def _check_files_exist(rows: list[tuple[str, str, str]], strict: bool) -> None:
         click.echo(f"Warning: {msg}", err=True)
 
 
-def _parse_tsv(input_tsv: str) -> list[tuple[str, str, str]]:
+def _parse_tsv(input_tsv: str, strict: bool) -> list[tuple[str, str, str]]:
     rows = []
     with open(input_tsv, newline="") as fh:
         reader = csv.reader(fh, delimiter="\t")
-        for line_num, raw_row in enumerate(reader, start=1):
-            if not raw_row or raw_row[0].startswith("#"):
+        for line_num, row in enumerate(reader, start=1):
+            if not row or row[0].startswith("#"):
                 continue
-            rows.append(_validate_sample_row(raw_row, line_num))
+            label, gff3_path, gfa_path = row[0].strip(), row[1].strip(), row[2].strip()
+            if strict:  # placeholder, method is a bit silly
+                label, gff3_path, gfa_path = _validate_sample_row(row, line_num)
+            rows.append([label, gff3_path, gfa_path])
 
     if not rows:
         raise click.ClickException(f"No data rows found in '{input_tsv}'.")
@@ -102,6 +106,22 @@ def cli():
     ),
 )
 @click.option(
+    "--min-overlap",
+    "-m",
+    default=0.00001,
+    show_default=True,
+    type=float,
+    help = "Minimum overlap coverage between A and B wrt to A.",
+)
+@click.option(
+    "--no-orphans",
+    "-n",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Do not include genes with no gene family assignment.",
+)
+@click.option(
     "--output-dir",
     "-o",
     default=".",
@@ -122,7 +142,11 @@ def cli():
     default=False,
     help="Enable verbose logging.",
 )
-def collapse(input_tsv: str, output_dir: str, strict: bool, verbose: bool):
+def collapse(
+        input_tsv: str, min_overlap: float,
+        no_orphans: bool, output_dir: str,
+        strict: bool, verbose: bool,
+    ):
     """Collapse structural annotations in top-down order.
 
     \b
@@ -141,7 +165,7 @@ def collapse(input_tsv: str, output_dir: str, strict: bool, verbose: bool):
     Usage:
       adjudicator collapse --input-tsv samples.tsv [options] [--help]
     """
-    rows = _parse_tsv(input_tsv)
+    rows = _parse_tsv(input_tsv, strict)
     click.echo(
         f"Parsed {len(rows)} entr{'y' if len(rows) == 1 else 'ies'} from '{input_tsv}'."
     )
@@ -149,11 +173,35 @@ def collapse(input_tsv: str, output_dir: str, strict: bool, verbose: bool):
     _check_files_exist(rows, strict=strict)
     os.makedirs(output_dir, exist_ok=True)
 
+    count = 0
+    compare = list()
     for label, gff3_path, gfa_path in rows:
         if verbose:
             click.echo(f"Processing '{label}':")
             click.echo(f"GFF3 : {gff3_path}")
             click.echo(f"GFA  : {gfa_path}")
+        if count < 2:  # Process first two 
+            compare.append([label, gff3_path, gfa_path])
+            if count == 1:
+                label_a = compare[0][0]
+                label_b = compare[1][0]
+                gff3_a = compare[0][1]
+                gff3_b = compare[1][1]
+                gfa_a = compare[0][2]
+                gfa_b = compare[1][2]
+                name = f"{label_a}_{label_b}"
+                compare_out = f"{output_dir}/{name}"
+                intersection = WAOIntersect(gff3_a, gff3_b)
+                intersection.write(compare_out)
+                overlaps = f"{compare_out}.wao.gff3"
+                adjudicator = AdjudicateModel(
+                                              overlaps, gfa_a, gfa_b,
+                                              min_overlap, no_orphans,
+                                              name
+                                             )
+                adjudicator.choose_model()
+
+        count += 1
 
     click.echo(f"Done. Results written to '{output_dir}'.")
 
