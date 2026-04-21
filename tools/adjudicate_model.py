@@ -2,6 +2,7 @@
 """Adjudicate overlapping gene model predictions using gene family scores."""
 
 import sys
+import re
 from typing import Optional
 
 
@@ -35,7 +36,7 @@ class AdjudicateModel:
         self.genefamiliesb = genefamiliesb
         self.minoverlap = minoverlap
         self.no_orphans = no_orphans
-        self.name = name
+        self.out = name
 
         self.families: dict = {}
         self.my_ids: dict = {}
@@ -49,7 +50,7 @@ class AdjudicateModel:
             f"genefamiliesb={self.genefamiliesb!r}, "
             f"minoverlap={self.minoverlap}, "
             f"no_orphans={self.no_orphans}, "
-            f"name={self.name!r})"
+            f"name={self.out!r})"
         )
 
     def get_families(self, genefamilies: str) -> dict:
@@ -80,6 +81,7 @@ class AdjudicateModel:
                     "gene_family": genefamily,
                     "score": bscore,
                     "model": model,
+                    "record": line
                 }
         return families
 
@@ -89,6 +91,12 @@ class AdjudicateModel:
             "a": self.get_families(self.genefamiliesa),
             "b": self.get_families(self.genefamiliesb),
         }
+        concat_families = f"./{self.out}.gfa"
+        with open(concat_families, "w") as fh:
+            for family in self.families["a"]:
+                fh.write(f"{self.families['a'][family]['record']}\n")
+            for family in self.families["b"]:
+                fh.write(f"{self.families['b'][family]['record']}\n")
 
     def choose_model(self) -> None:
         """Adjudicate overlapping features and write results."""
@@ -107,15 +115,21 @@ class AdjudicateModel:
         """Parse one intersect line and update adjudication state."""
         fields = line.split("\t")
         overlap = int(fields[-1])
-        featureid1 = fields[8].split(";")[0].split("=")[1]
+
+        match = re.search(r'(?:^|;)ID=([^;]+)', fields[8])
+        featureid1 = match.group(1) if match else None
+
+#        featureid1 = fields[8].split(";")[0].split("=")[1]
         record1 = "\t".join(fields[:9])
 
         if not overlap:  # no overlap — keep unconditionally
             self._init_my_id(featureid1, record1)
             return
 
+        match = re.search(r'(?:^|;)ID=([^;]+)', fields[-2])
         record2 = "\t".join(fields[9:-1])
-        featureid2 = fields[-2].split(";")[0].split("=")[1]
+#        featureid2 = fields[-2].split(";")[0].split("=")[1]
+        featureid2 = match.group(1) if match else None
         start1, stop1 = int(fields[3]), int(fields[4])
 
         if overlap / (stop1 - start1) <= self.minoverlap:
@@ -183,19 +197,13 @@ class AdjudicateModel:
         current = self.my_ids[featureid1]["score"]
 
         if score1 >= score2 and current <= score1:
-            self._update_my_id(
-                featureid1, family1, score1, model1, featureid1, record1
-            )
-            reason = (
-                "score1 = score2" if score1 == score2 else "score1 > score2"
-            )
+            self._update_my_id(featureid1, family1, score1, model1, featureid1, record1)
+            reason = "score1 = score2" if score1 == score2 else "score1 > score2"
             self.eliminated_ids[featureid2] = self._elim_entry(
                 featureid1, featureid2, score1, score2, reason
             )
         elif score2 > score1 and current < score2:
-            self._update_my_id(
-                featureid1, family2, score2, model2, featureid2, record2
-            )
+            self._update_my_id(featureid1, family2, score2, model2, featureid2, record2)
             self.eliminated_ids[featureid1] = self._elim_entry(
                 featureid1, featureid2, score1, score2, "score1 < score2"
             )
@@ -292,12 +300,27 @@ class AdjudicateModel:
 
     def _write_results(self) -> None:
         """Print retained records to stdout; write eliminated ones to TSV."""
-        for data in self.my_ids.values():
-            if data["parent"] not in self.eliminated_ids:
-                print(data["record"])
+        final = []
+        eliminated_out_path = f"./{self.out}.eliminated.tsv"
+        gff_out_path = f"./{self.out}.collapsed.gff3"
+        unique_b_path = f"{self.out}.unique_b.gff3"  # unique comparison b
+        final_out = f"{self.out}.final.gff3"  # concat gff_out_path, unique_b_path
+        with open(gff_out_path, "w") as fh:
+            for data in self.my_ids.values():
+                if data["parent"] not in self.eliminated_ids:
+                    fh.write(f"{data['record']}\n")
+                    final.append(data["record"].split("\t"))
 
-        out_path = f"./{self.name}.eliminated.tsv"
-        with open(out_path, "w") as fh:
+        with open(unique_b_path, "r") as fh:
+            for record in fh:
+                final.append(record.rstrip().split("\t"))
+
+        with open(final_out, "w") as fh:
+            for record in sorted(final, key=lambda x: (x[2], x[3])):
+                output_line = "\t".join(record)
+                fh.write(f"{output_line}\n")
+
+        with open(eliminated_out_path, "w") as fh:
             for entry in self.eliminated_ids.values():
                 fh.write(f"{entry}\n")
 
