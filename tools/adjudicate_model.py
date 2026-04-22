@@ -81,7 +81,7 @@ class AdjudicateModel:
                     "gene_family": genefamily,
                     "score": bscore,
                     "model": model,
-                    "record": line
+                    "record": line,
                 }
         return families
 
@@ -116,19 +116,19 @@ class AdjudicateModel:
         fields = line.split("\t")
         overlap = int(fields[-1])
 
-        match = re.search(r'(?:^|;)ID=([^;]+)', fields[8])
+        match = re.search(r"(?:^|;)ID=([^;]+)", fields[8])
         featureid1 = match.group(1) if match else None
 
-#        featureid1 = fields[8].split(";")[0].split("=")[1]
+        #        featureid1 = fields[8].split(";")[0].split("=")[1]
         record1 = "\t".join(fields[:9])
 
         if not overlap:  # no overlap — keep unconditionally
             self._init_my_id(featureid1, record1)
             return
 
-        match = re.search(r'(?:^|;)ID=([^;]+)', fields[-2])
+        match = re.search(r"(?:^|;)ID=([^;]+)", fields[-2])
         record2 = "\t".join(fields[9:-1])
-#        featureid2 = fields[-2].split(";")[0].split("=")[1]
+        #        featureid2 = fields[-2].split(";")[0].split("=")[1]
         featureid2 = match.group(1) if match else None
         start1, stop1 = int(fields[3]), int(fields[4])
 

@@ -8,6 +8,7 @@ import click
 
 from tools.waointersect import WAOIntersect
 from tools.adjudicate_model import AdjudicateModel
+from tools.gff3_in_memory import GFF3InMemory
 
 
 def _validate_sample_row(row: list[str], line_num: int) -> tuple[str, str, str]:
@@ -85,6 +86,7 @@ def cli():
     and remove (or assign) calls against repeat annotations if available.
     """
 
+
 @cli.command("repeat-filter")
 @click.option(
     "--input-tsv",
@@ -107,9 +109,7 @@ def cli():
     "-a",
     required=True,
     type=click.Path(exists=True, dir_okay=False, readable=True, path_type=str),
-    help=(
-        """GFF3 file of annotated regions to exclude."""
-    ),
+    help=("""GFF3 file of annotated regions to exclude."""),
 )
 @click.option(
     "--max-coverage",
@@ -262,7 +262,7 @@ def collapse(
                     overlaps, gfa_a, gfa_b, min_overlap, no_orphans, compare_out
                 )
                 adjudicator.choose_model()
-        else:  # compare the
+        else:
             name = f"{last_comparison}_{label}"
             compare_out = f"{output_dir}/{name}"
             intersection = WAOIntersect(last_final, gff3_path)
@@ -279,6 +279,14 @@ def collapse(
         last_gfa = f"{compare_out}.gfa"
         count += 1
 
+    input_gffs = [sample[1] for sample in compare]
+    all_gffs = GFF3InMemory(input_gffs)
+    final_gff3 = GFF3InMemory(last_final)
+    all_records_out = f"{compare_out}.final.wsubfeatures.gff3"
+    with open(all_records_out, "w") as fh:
+        for gid in final_gff3.gene_ids():
+            all_gffs.write_gene(gid, fh)
+    #        print(all_gffs.get_gene(gid))
     click.echo(f"Done. Results written to '{output_dir}'.")
 
 
