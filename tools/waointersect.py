@@ -19,19 +19,29 @@ class WAOIntersect:
 
     _NULL_B = [".", ".", ".", "-1", "-1", ".", ".", ".", "."]
 
-    def __init__(self, gff3_a: str, gff3_b: str):
+    def __init__(self, gff3_a: str, 
+                 gff3_b: str, 
+                 repeats: bool,
+                 max_repeat_overlap: float):
         """Initialise, parse both GFF3 files, and build the B interval trees.
 
         Args:
-            gff3_a: Path to the query GFF3 file (the ``-a`` operand).
-            gff3_b: Path to the database GFF3 file (the ``-b`` operand).
+            gff3_a: Path to the query GFF3 file
+            gff3_b: Path to the target GFF3 file
+            repeats: Path to a repeat annotation
         """
         self.gff3_a = os.path.abspath(gff3_a)
         self.gff3_b = os.path.abspath(gff3_b)
+        self.repeats = repeats  # gff3_b is a repeat annotation
+        self.max_repeat_overlap = max_repeat_overlap
         self.features = ["gene"]  # change this later as paramter
         self.trees_b: dict[str, intervaltree.IntervalTree] = {}
         self.records_a: list[tuple[str, int, int, list[str]]] = []
-        self._load_b()
+        if repeats:
+            self.features = ["exon"]
+            self._load_and_merge_b()
+        else:
+            self._load_b()
         self._load_a()
 
     def _parse_gff3(self, path: str) -> list[tuple[str, int, int, list[str]]]:
@@ -74,11 +84,35 @@ class WAOIntersect:
         Each interval's data payload is the original nine GFF3 fields so that
         they can be appended verbatim to an A row in ``intersect``.
         """
+        
         for seqname, start_0, end, fields in self._parse_gff3(self.gff3_b):
             if seqname not in self.trees_b:
                 self.trees_b[seqname] = intervaltree.IntervalTree()
             self.trees_b[seqname][start_0:end] = fields
 
+    def _load_and_merge_b(self, gff3_file: str, gap_tolerance: int = 20):
+        """Load a GFF3 file into an interval tree, merging overlapping and near-adjacent intervals."""
+#        tree = IntervalTree()
+        for seqname, start_0, end, fields in self._parse_gff3(self.gff3_b):
+#            with open(gff3_file) as f:
+            if seqname not in self.trees_b:
+                self.trees_b[seqname] = intervaltree.IntervalTree()
+            self.trees_b[seqname][start_0:end] = fields 
+            self.trees_b[seqname].merge_overlaps()
+        
+            merged = True
+            while merged:
+                merged = False
+                intervals = sorted(self.trees_b[seqname])
+                for i in range(len(intervals) - 1):
+                    a, b = intervals[i], intervals[i + 1]
+                    if b.begin - a.end <= gap_tolerance:
+                        tree.remove(a)
+                        tree.remove(b)
+                        tree.addi(a.begin, max(a.end, b.end))
+                        merged = True
+                        break
+    
     def _load_a(self):
         """Parse ``gff3_a`` and store the records for iteration in ``intersect``."""
         self.records_a = self._parse_gff3(self.gff3_a)

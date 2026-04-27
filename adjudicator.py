@@ -150,6 +150,40 @@ def repeat_filter(
     click.echo(
         f"Parsed {len(rows)} entr{'y' if len(rows) == 1 else 'ies'} from '{input_tsv}'."
     )
+    os.makedirs(output_dir, exist_ok=True)
+
+    count = 0
+    compare = list()
+    for label, gff3_path, gfa_path in rows:
+        if verbose:
+            click.echo(f"Processing '{label}':")
+            click.echo(f"GFF3 : {gff3_path}")
+            click.echo(f"GFA  : {gfa_path}")
+        compare.append([label, gff3_path, gfa_path])
+        label_a = label
+        label_b = "repeat_filter"
+        gff3_a = gff3_path
+        gff3_b = annotation
+        gfa_a = gfa_path
+        name = f"{label_a}_{label_b}"
+        compare_out = f"{output_dir}/{name}"
+        intersection = WAOIntersect(gff3_a, gff3_b, True, 0.4)
+        intersection.write(compare_out)
+#        adjudicator = AdjudicateModel(
+#            overlaps, gfa_a, gfa_b, min_overlap, no_orphans, compare_out
+#        )
+#        adjudicator.choose_model()
+
+#    input_gffs = [sample[1] for sample in compare]
+#    all_gffs = GFF3InMemory(input_gffs)
+#    final_gff3 = GFF3InMemory(last_final)
+#    all_records_out = f"{compare_out}.final.wsubfeatures.gff3"
+#    with open(all_records_out, "w") as fh:
+#        for gid in final_gff3.gene_ids():
+#            all_gffs.write_gene(gid, fh)
+#    #        print(all_gffs.get_gene(gid))
+    click.echo(f"Done. Results written to '{output_dir}'.")
+
 
 
 @cli.command("collapse")
@@ -254,7 +288,7 @@ def collapse(
                 gfa_b = compare[1][2]
                 name = f"{label_a}_{label_b}"
                 compare_out = f"{output_dir}/{name}"
-                intersection = WAOIntersect(gff3_a, gff3_b)
+                intersection = WAOIntersect(gff3_a, gff3_b, False, None)
                 intersection.write(compare_out)
                 overlaps = f"{compare_out}.wao.gff3"
                 unique_b = f"{compare_out}.unique_b.gff3"
@@ -265,7 +299,7 @@ def collapse(
         else:
             name = f"{last_comparison}_{label}"
             compare_out = f"{output_dir}/{name}"
-            intersection = WAOIntersect(last_final, gff3_path)
+            intersection = WAOIntersect(last_final, gff3_path, False, None)
             intersection.write(compare_out)
             overlaps = f"{compare_out}.wao.gff3"
             unique_b = f"{compare_out}.unique_b.gff3"
