@@ -132,11 +132,26 @@ def cli():
     type=click.Path(file_okay=False, writable=True, path_type=str),
     help="Directory where output files will be written.",
 )
+@click.option(
+    "--strict/--no-strict",
+    default=False,
+    show_default=True,
+    help="Exit with an error if any referenced input file does not exist on disk.",
+)
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    default=False,
+    help="Enable verbose logging.",
+)
 def repeat_filter(
     input_tsv: str,
     annotation: str,
     max_coverage: float,
     output_dir: str,
+    strict: bool,
+    verbose: bool
 ):
     """
     Filter the gff3 structural annotations from the input TSV file against
@@ -167,21 +182,22 @@ def repeat_filter(
         gfa_a = gfa_path
         name = f"{label_a}_{label_b}"
         compare_out = f"{output_dir}/{name}"
+        overlaps = f"{compare_out}.wao.gff3"
         intersection = WAOIntersect(gff3_a, gff3_b, True, 0.4)
         intersection.write(compare_out)
-#        adjudicator = AdjudicateModel(
-#            overlaps, gfa_a, gfa_b, min_overlap, no_orphans, compare_out
-#        )
-#        adjudicator.choose_model()
-
-#    input_gffs = [sample[1] for sample in compare]
-#    all_gffs = GFF3InMemory(input_gffs)
-#    final_gff3 = GFF3InMemory(last_final)
-#    all_records_out = f"{compare_out}.final.wsubfeatures.gff3"
-#    with open(all_records_out, "w") as fh:
-#        for gid in final_gff3.gene_ids():
-#            all_gffs.write_gene(gid, fh)
-#    #        print(all_gffs.get_gene(gid))
+        adjudicator = AdjudicateModel(
+            overlaps, gfa_a, None, 0.4, False, compare_out
+        )
+        blacklist = adjudicator.repeat_filter()
+        filtered_blacklist = []
+        for gid in blacklist:
+            filtered_blacklist.append(".".join(gid.split(".")[:-1]))
+        filtered_gff3 = GFF3InMemory(gff3_a, filtered_blacklist)
+        filtered_records_out = f"{compare_out}.final.wsubfeatures.gff3"
+        with open(filtered_records_out, "w") as fh:
+            for gid in filtered_gff3.gene_ids():
+                filtered_gff3.write_gene(gid, fh)
+    #        print(all_gffs.get_gene(gid))
     click.echo(f"Done. Results written to '{output_dir}'.")
 
 
@@ -314,8 +330,8 @@ def collapse(
         count += 1
 
     input_gffs = [sample[1] for sample in compare]
-    all_gffs = GFF3InMemory(input_gffs)
-    final_gff3 = GFF3InMemory(last_final)
+    all_gffs = GFF3InMemory(input_gffs, [])
+    final_gff3 = GFF3InMemory(last_final, [])
     all_records_out = f"{compare_out}.final.wsubfeatures.gff3"
     with open(all_records_out, "w") as fh:
         for gid in final_gff3.gene_ids():

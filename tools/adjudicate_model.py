@@ -4,6 +4,7 @@
 import sys
 import re
 from typing import Optional
+from collections import defaultdict
 
 
 class AdjudicateModel:
@@ -42,6 +43,8 @@ class AdjudicateModel:
         self.my_ids: dict = {}
         self.alt_ids: dict = {}
         self.eliminated_ids: dict = {}
+        self.repeat_data = defaultdict(lambda: {'exon_length': 0, 'overlap_length': 0})
+        self.blacklist: dict = {}
 
     def __repr__(self) -> str:
         return (
@@ -53,6 +56,39 @@ class AdjudicateModel:
             f"name={self.out!r})"
         )
 
+    def repeat_filter(self) -> None:
+        """Reads wao overlap file between exons and repeats and removes
+           Gene models whose exons overlap repeats at a default of 0.40
+        """
+        seen_exons = {}
+        with open(self.overlaps) as fh:
+            for line in fh:
+                line = line.rstrip()
+                if not line:
+                    continue
+                fields = line.split("\t")
+                attrs = dict(kv.split('=') for kv in fields[8].split(';') if '=' in kv)  # get all attributes, this may be useful later
+                parent = attrs.get('Parent')
+                exon_id = attrs.get('ID')
+                if not parent or not exon_id:
+                    continue
+                if exon_id not in seen_exons:
+                    exon_len = int(fields[4]) - int(fields[3]) + 1
+                    self.repeat_data[parent]['exon_length'] += exon_len
+                    seen_exons[exon_id] = 1
+                self.repeat_data[parent]['overlap_length'] += int(fields[-1])
+
+        with open(f"{self.out}.blacklist.transcript_ids.txt", "w") as fh:
+            for parent, vals in self.repeat_data.items():
+    #            print(f"{parent}: exon_length={vals['exon_length']}, overlap_length={vals['overlap_length']}")
+                exon_length = vals['exon_length']
+                overlap_length = vals['overlap_length']
+                if float(overlap_length/exon_length) >= self.minoverlap:  # 0.4
+                    if parent not in self.blacklist:
+                        self.blacklist[parent] = 1
+                        fh.write(f"{parent}\n")
+        return [ parent for parent in self.blacklist ]
+        
     def get_families(self, genefamilies: str) -> dict:
         """Read a gene-families file and return a feature-to-family mapping.
 
@@ -64,8 +100,8 @@ class AdjudicateModel:
         """
         families: dict = {}
         with open(genefamilies) as fh:
-            for raw in fh:
-                line = raw.rstrip()
+            for line in fh:
+                line = line.rstrip()
                 if not line or line.startswith("#"):
                     continue
                 fields = line.split("\t")
@@ -103,8 +139,8 @@ class AdjudicateModel:
         self.load_families()
 
         with open(self.overlaps) as fh:
-            for raw in fh:
-                line = raw.rstrip()
+            for line in fh:
+                line = line.rstrip()
                 if not line:
                     continue
                 self._process_line(line)
@@ -311,7 +347,7 @@ class AdjudicateModel:
                     fh.write(f"{data['record']}\n")
                     final.append(data["record"].split("\t"))
 
-        with open(unique_b_path, "r") as fh:
+        with open(unique_b_path) as fh:
             for record in fh:
                 final.append(record.rstrip().split("\t"))
 

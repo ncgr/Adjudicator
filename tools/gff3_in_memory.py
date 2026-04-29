@@ -50,7 +50,7 @@ class GFF3InMemory:
     FEATURE_ORDER = ["gene", "mRNA", "exon", "CDS"]
     FEATURE_RANK = {f: i for i, f in enumerate(FEATURE_ORDER)}
 
-    def __init__(self, input_gff3: Union[str, list]):
+    def __init__(self, input_gff3: Union[str, list], blacklist: list):
         """
         Parameters
         ----------
@@ -66,6 +66,7 @@ class GFF3InMemory:
             self.input_gff3 = list(input_gff3)
 
         self.gff3: dict = {}
+        self.blacklist = blacklist
         self._id_index: dict = {}
         self._parse()
 
@@ -250,12 +251,15 @@ class GFF3InMemory:
         with open("out.gff3", "w") as fh:
             gff.write_gene("gene:ENSG00000001", fh)
         """
-        for line in self.flatten_gene(gene_id):
-            file_handle.write(line + "\n")
+        if gene_id not in self.blacklist:
+            for line in self.flatten_gene(gene_id):
+                file_handle.write(line + "\n")
 
     def print_all(self) -> None:
         """Print every gene and all its children to stdout."""
         for gene_id in self.gff3:
+            if gene_id in self.blacklist:  # do not print blacklisted records
+                continue
             self.print_gene(gene_id)
 
     def __len__(self) -> int:

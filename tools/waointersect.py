@@ -38,8 +38,8 @@ class WAOIntersect:
         self.trees_b: dict[str, intervaltree.IntervalTree] = {}
         self.records_a: list[tuple[str, int, int, list[str]]] = []
         if repeats:
-            self.features = ["exon"]
             self._load_and_merge_b()
+            self.features = ["exon"]
         else:
             self._load_b()
         self._load_a()
@@ -70,8 +70,9 @@ class WAOIntersect:
                 fields = line.rstrip("\n").split("\t")
                 if len(fields) < 9:
                     continue
-                if fields[2].lower() not in self.features:
-                    continue
+                if self.features:
+                    if fields[2].lower() not in self.features:
+                        continue
                 seqname = fields[0]
                 start_0 = int(fields[3]) - 1
                 end = int(fields[4])
@@ -90,28 +91,27 @@ class WAOIntersect:
                 self.trees_b[seqname] = intervaltree.IntervalTree()
             self.trees_b[seqname][start_0:end] = fields
 
-    def _load_and_merge_b(self, gff3_file: str, gap_tolerance: int = 20):
+    def _load_and_merge_b(self, gap_tolerance: int = 20):
         """Load a GFF3 file into an interval tree, merging overlapping and near-adjacent intervals."""
-#        tree = IntervalTree()
+        self.features = []
         for seqname, start_0, end, fields in self._parse_gff3(self.gff3_b):
-#            with open(gff3_file) as f:
             if seqname not in self.trees_b:
                 self.trees_b[seqname] = intervaltree.IntervalTree()
             self.trees_b[seqname][start_0:end] = fields 
-            self.trees_b[seqname].merge_overlaps()
+#            self.trees_b[seqname].merge_overlaps()
         
-            merged = True
-            while merged:
-                merged = False
-                intervals = sorted(self.trees_b[seqname])
-                for i in range(len(intervals) - 1):
-                    a, b = intervals[i], intervals[i + 1]
-                    if b.begin - a.end <= gap_tolerance:
-                        tree.remove(a)
-                        tree.remove(b)
-                        tree.addi(a.begin, max(a.end, b.end))
-                        merged = True
-                        break
+#            merged = True
+#            while merged:
+#                merged = False
+#                intervals = sorted(self.trees_b[seqname])
+#                for i in range(len(intervals) - 1):
+#                    a, b = intervals[i], intervals[i + 1]
+#                    if b.begin - a.end <= gap_tolerance:
+#                        self.tree_b[seqname].remove(a)
+#                        self.tree_b[seqname].remove(b)
+#                        self.tree_b[seqname].addi(a.begin, max(a.end, b.end))
+#                        merged = True
+#                        break
     
     def _load_a(self):
         """Parse ``gff3_a`` and store the records for iteration in ``intersect``."""
