@@ -151,7 +151,7 @@ def repeat_filter(
     max_coverage: float,
     output_dir: str,
     strict: bool,
-    verbose: bool
+    verbose: bool,
 ):
     """
     Filter the gff3 structural annotations from the input TSV file against
@@ -185,9 +185,7 @@ def repeat_filter(
         overlaps = f"{compare_out}.wao.gff3"
         intersection = WAOIntersect(gff3_a, gff3_b, True, 0.4)
         intersection.write(compare_out)
-        adjudicator = AdjudicateModel(
-            overlaps, gfa_a, None, 0.4, False, compare_out
-        )
+        adjudicator = AdjudicateModel(overlaps, gfa_a, None, 0.4, False, compare_out)
         blacklist = adjudicator.repeat_filter()
         filtered_blacklist = []
         for gid in blacklist:
@@ -199,7 +197,6 @@ def repeat_filter(
                 filtered_gff3.write_gene(gid, fh)
     #        print(all_gffs.get_gene(gid))
     click.echo(f"Done. Results written to '{output_dir}'.")
-
 
 
 @cli.command("collapse")
