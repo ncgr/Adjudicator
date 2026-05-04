@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adjudicator"
+version = "0.1.0"
+description = "A CLI tool for collapsing and filtering structural genome annotations using gene family assignments"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Connor Cameron", email = "ctc@ncgr.org" }
+]
+keywords = ["bioinformatics", "gff", "gff3", "gfa", "genome", "annotation", "gene", "gene model"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "click>=8.1",
+    "intervaltree>=3.2.1",
+    "sortedcontainers>=2.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "build",
+    "twine",
+]
+
+[project.scripts]
+adjudicator = "adjudicator:cli"
+
+[project.urls]
+Homepage = "https://github.com/ncgr/Adjudicator"
+"Bug Tracker" = "https://github.com/ncgr/Adjudicator/issues"
+
+[tool.setuptools.packages.find]
+include = ["tools", "tools.*"]
