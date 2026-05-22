@@ -36,7 +36,7 @@ pip install adjudicator
 
 ```bash
 adjudicator --version
-# adjudicator, version 0.1.0
+# adjudicator, version 1.0.0
 ```
 
 ---
