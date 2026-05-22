@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adjudicator"
-version = "0.1.0"
+version = "1.0.0"
 description = "A CLI tool for collapsing and filtering structural genome annotations using gene family assignments"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [
@@ -15,10 +15,11 @@ authors = [
 ]
 keywords = ["bioinformatics", "gff", "gff3", "gfa", "genome", "annotation", "gene", "gene model"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

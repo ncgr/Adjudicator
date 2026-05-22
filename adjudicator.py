@@ -6,6 +6,7 @@ import os
 
 import click
 
+from importlib.metadata import version
 from tools.waointersect import WAOIntersect
 from tools.adjudicate_model import AdjudicateModel
 from tools.gff3_in_memory import GFF3InMemory
@@ -75,7 +76,7 @@ def _parse_tsv(input_tsv: str, strict: bool) -> list[tuple[str, str, str]]:
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="adjudicator")
+@click.version_option(version=version("adjudicator"), prog_name="adjudicator")
 def cli():
     """
     The Adjudicator collapses multiple structural annotations using

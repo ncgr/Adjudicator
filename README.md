@@ -1,6 +1,6 @@
 # Adjudicator
 
-> **Version:** 0.1.0 · **License:** Apache-2.0 · **Status:** Beta  
+> **Version:** 1.0.0 · **License:** Apache-2.0 · **Status:** Production/Stable  
 > **PyPI:** `pip install adjudicator` · **Source:** [ncgr/Adjudicator](https://github.com/ncgr/Adjudicator)  
 > **Author:** Connor Cameron · ctc@ncgr.org · National Center for Genome Resources
 
